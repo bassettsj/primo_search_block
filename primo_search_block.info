@@ -1,0 +1,4 @@
+name = Primo Search Block
+description = Provides a search block following the recommened implementation by ExLibris.
+package = Search
+core = 7.x
