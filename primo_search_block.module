@@ -92,6 +92,15 @@ function primo_search_block_block_configure($delta = '') {
   return $form;
 }
 
+
+
+primo_search_block_config_form($form, &$form_state){
+  $form = array();
+  $form['#tree'] = True;
+  $form['primo_search_block_search_scope'] = array();
+  retun $form;
+}
+
 /**
  * Implements hook_block_save().
  */
