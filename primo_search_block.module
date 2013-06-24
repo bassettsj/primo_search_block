@@ -4,39 +4,97 @@
  * TODO: Enter file description here.
  */
 
-/**
- * Implements hook_menu().
- */
-function primo_search_block_menu() { 
-  // This is the minimum information you can provide for a menu item.
-  $items['primo_search_block'] = array(
-    'title' => 'TODO: Enter menu item title',
-    'page callback' => 'TODO: Enter callback function',
-    'access arguments' => array('TODO: Enter user permissions'),
-  );
-  // This is a menu item for a form.
-  $items['primo_search_block/admin'] = array(
-    'title' => 'TODO: Enter menu item title',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('primo_search_block_form'),
-    'access arguments' => array('TODO: Enter user permissions'),
-  );
-  // More complex menu item.
-  $items['primo_search_block/foo'] = array(
-    'title' => 'TODO: Enter menu item title',
-    'description' => 'TODO: Enter description',
-    'page callback' => 'TODO: Enter callback function',
-    'page arguments' => array(), // An array of arguments to pass to the page callback function. Integer values pass the corresponding URL component.
-    'access callback' => '', // defaults to user_access()
-    'access arguments' => array('TODO: Enter user permissions'),
-    'weight' => 0,
-    'type' => MENU_NORMAL_ITEM, // One of MENU_NORMAL_ITEM / MENU_CALLBACK / MENU_SUGGESTED_ITEM / MENU_LOCAL_TASK / MENU_DEFAULT_LOCAL_TASK
-    'file' => 'primo_search_block.admin.inc',
-    'menu_name' => '', // Menu to place this item in.
-    'title callback' => '', // Function to generate the title, defaults to t(). 
-    'title arguments' => array(), // Arguments to send to t() or your custom callback. 
-  );
-  // OPTIONAL: Fill in additional menu items
 
-  return $items;
+
+/**
+ * Implements hook_block_info().
+ */
+function primo_search_block_block_info() {
+  $blocks = array(
+    'primo_search_block' => array(
+        'info' => t('Primo Search Block'),
+      ),
+    );
+  return $blocks;
+}
+
+/**
+ * Builds the select element for the scopes list.
+ * @param  array  $scopes Associative array of label to value
+ * @return string         Markup to be added to the form.
+ */
+function primo_search_block_scopes_select(array $scopes){
+  $markup = '';
+  foreach ($scopes as $label => $value) {
+    $markup .= '<option value="'. $value.'">'.$label.'</option>';
+  }
+
+  $markup = '<select name="search_scope">'.$markup.'</select>';
+  return $markup;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function primo_search_block_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'primo_search_block':
+
+      $searchScopes = (array) variable_get('primo_search_search_scope', array('All'=>'scope:(NEU),primo_central_multiple_fe'));
+    
+      $modulePath = drupal_get_path('module', 'primo_search_block');
+      $block['subject'] = t(variable_get('primo_search_block_title', 'Primo Search'));
+      $block['content'] = array(
+        'form' => array(
+          '#type'=> 'markup',
+          '#markup'=>
+          '
+            <form name="searchForm" role="search" method="get" action="http://'. variable_get('primo_search_block_url', 'example.com') .  /* <PRIMO_URL:PORT> */  '/primo_library/libweb/action/dlSearch.do" enctype="application/x-www-form-urlencoded; charset=utf-8" id="simple" class="primo-search" target="_self"  onsubmit="searchPrimo()">
+            <input name="institution" value="'.variable_get('primo_search_block_institution_code', 'EXL') . /*<INSTITUTION_CODE>*/ '" type="hidden">
+            <input name="vid" value="'. variable_get('primo_search_block_view_code', 'EXL'). /*<VIEW_CODE>*/'" type="hidden">
+            <input name="group" value="GUEST" type="hidden">
+            <input name="onCampus" value="true" type="hidden">
+            <input name="displayMode" value="full" type="hidden">
+            <input type="hidden" id="primoQuery" name="query" />
+            <input type="text" size="25" id="primoQueryTemp" value="" placeholder="Search..." name="queryTemp" onkeypress="return searchPrimoEvent(event)" />
+            '. 
+              primo_search_block_scopes_select($searchScopes)
+            .'
+            <input id="go" type="button" value="Search" title="Search"  onclick="searchPrimo()" alt="Search">
+            </form>
+          ',
+          '#attached' => array(
+            'js' => array( $modulePath . '/js/primo_search_block.min.js'),
+            'css' => array($modulePath . '/css/primo_search_block.css'),
+            ),
+          ),
+
+        );
+    break;
+  }
+  return $block;
+}
+
+/**
+ * Implements hook_block_configure().
+ */
+function primo_search_block_block_configure($delta = '') {
+  $form = array();
+   if ($delta == 'primo_search_block') {
+      $form['primo_search_block_title'] = array(
+        '#type' => 'text',
+        '#title' => t('The title to show on the search block'),
+        '#default_value' => variable_get('primo_search_block_title', 'Primo Search'),
+      ); 
+
+   }
+  return $form;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function primo_search_block_block_save($delta = '', $edit = array()) {
+  
 }
