@@ -50,7 +50,7 @@ function primo_search_block_block_view($delta = '') {
           '#type'=> 'markup',
           '#markup'=>
           '
-            <form name="searchForm" role="search" method="get" action="http://'. variable_get('primo_search_block_url', 'example.com') .  /* <PRIMO_URL:PORT> */  '/primo_library/libweb/action/dlSearch.do" enctype="application/x-www-form-urlencoded; charset=utf-8" id="simple" class="primo-search" target="_self"  onsubmit="searchPrimo()">
+            <form name="searchForm" role="search" method="get" action="http://'. variable_get('primo_search_block_url', 'example.com:1701') .  /* <PRIMO_URL:PORT> */  '/primo_library/libweb/action/dlSearch.do" enctype="application/x-www-form-urlencoded; charset=utf-8" id="simple" class="primo-search" target="_self"  onsubmit="searchPrimo()">
             <input name="institution" value="'.variable_get('primo_search_block_institution_code', 'EXL') . /*<INSTITUTION_CODE>*/ '" type="hidden">
             <input name="vid" value="'. variable_get('primo_search_block_view_code', 'EXL'). /*<VIEW_CODE>*/'" type="hidden">
             <input name="group" value="GUEST" type="hidden">
@@ -82,24 +82,38 @@ function primo_search_block_block_view($delta = '') {
 function primo_search_block_block_configure($delta = '') {
   $form = array();
    if ($delta == 'primo_search_block') {
-      $form['primo_search_block_title'] = array(
-        '#type' => 'text',
-        '#title' => t('The title to show on the search block'),
-        '#default_value' => variable_get('primo_search_block_title', 'Primo Search'),
-      ); 
+    $form['primo_search_search_scope'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Search scopes'),
+      '#default_value' => variable_get('primo_search_search_scope', 'Everything:everything_scope;Library Collections:nu_scope;Law Library Colletions:nu_law;Course Reserves:nu_cr;'),
+      '#required' => True,
+      );
 
+    $form['primo_search_block_institution_code']= array(
+      '#type' => 'textfield',
+      '#title' => t('Institution Code'),
+      '#default_value'=> variable_get('primo_search_block_institution_code', 'EXL'),
+      '#required' => True
+      );
+    
+    $form['primo_search_block_url']= array(
+      '#type' => 'textfield',
+      '#title' => t('Primo\'s Url and Port'),
+      '#default_value' => variable_get('primo_search_block_url', 'onesearch.northeastern.edu:1701'),
+      '#required' => True,
+      );
+    $form['primo_search_block_view_code'] = array(
+      '#type' => 'textfield',
+      '#title' => t('View code.'),
+      '#default_value'=> variable_get('primo_search_block_view_code', 'NU'),
+      '#required' => True,
+      );
    }
   return $form;
 }
 
 
 
-primo_search_block_config_form($form, &$form_state){
-  $form = array();
-  $form['#tree'] = True;
-  $form['primo_search_block_search_scope'] = array();
-  retun $form;
-}
 
 /**
  * Implements hook_block_save().
