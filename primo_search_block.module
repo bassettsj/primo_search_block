@@ -41,8 +41,9 @@ function primo_search_block_block_view($delta = '') {
   switch ($delta) {
     case 'primo_search_block':
 
-      $searchScopes = (array) variable_get('primo_search_search_scope', array('All'=>'scope:(NEU),primo_central_multiple_fe'));
-    
+      $searchScopes = (array) variable_get('primo_search_search_scope', array(
+
+        ));
       $modulePath = drupal_get_path('module', 'primo_search_block');
       $block['subject'] = t(variable_get('primo_search_block_title', 'Primo Search'));
       $block['content'] = array(
@@ -82,17 +83,22 @@ function primo_search_block_block_view($delta = '') {
 function primo_search_block_block_configure($delta = '') {
   $form = array();
    if ($delta == 'primo_search_block') {
-    $form['primo_search_search_scope'] = array(
+    $form['primo_search_block_scope_json'] = array(
       '#type' => 'textfield',
       '#title' => t('Search scopes'),
-      '#default_value' => variable_get('primo_search_search_scope', 'Everything:everything_scope;Library Collections:nu_scope;Law Library Colletions:nu_law;Course Reserves:nu_cr;'),
+      '#default_value' => variable_get('primo_search_block_scope_json'
+        ,'{"Library Catalogs + Articles":"everything_scope","Library Catalogs":"nu_scope","Law Library Catalog":"nu_law","Course Reserves":"nu_cr"}'
+        ),
       '#required' => True,
+      '#size'=> 200,
+      '#maxlength'=> 999,
+      '#element_validate' => array('primo_search_block_scope_json_validate'),
       );
 
     $form['primo_search_block_institution_code']= array(
       '#type' => 'textfield',
       '#title' => t('Institution Code'),
-      '#default_value'=> variable_get('primo_search_block_institution_code', 'EXL'),
+      '#default_value'=> variable_get('primo_search_block_institution_code', 'NEU'),
       '#required' => True
       );
     
@@ -112,6 +118,18 @@ function primo_search_block_block_configure($delta = '') {
   return $form;
 }
 
+/**
+ * Form search scope validation funtion.
+ * @param  array $element the returne form element.
+ *
+ * @todo Fix this!
+ */
+function primo_search_block_scope_json_validate($element, &$form_state, $form){
+  $test = @json_decode($element['#value']);
+  if ($test === null && json_last_error() !== JSON_ERROR_NONE) {
+    form_set_error('primo_search_search_scope_json', t('Primo search scopes must be vaild JSON.'));
+  }
+}
 
 
 
@@ -119,5 +137,12 @@ function primo_search_block_block_configure($delta = '') {
  * Implements hook_block_save().
  */
 function primo_search_block_block_save($delta = '', $edit = array()) {
-  
+  if ($delta == 'primo_search_block'){
+    variable_set('primo_search_block_scope_json', $edit['primo_search_block_scope_json']);
+    variable_set('primo_search_block_scope_array', json_decode($edit['primo_search_block_scope_json'],True));
+    variable_set('primo_search_block_view_code', $edit['primo_search_block_view_code']);
+    variable_set('primo_search_block_institution_code', $edit['primo_search_block_institution_code']);
+    variable_set('primo_search_block_url', $edit['primo_search_block_url']);
+  }
+
 }
