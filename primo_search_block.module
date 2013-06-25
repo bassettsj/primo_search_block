@@ -13,6 +13,7 @@ function primo_search_block_block_info() {
   $blocks = array(
     'primo_search_block' => array(
         'info' => t('Primo Search Block'),
+        'cache' => DRUPAL_CACHE_GLOBAL,
       ),
     );
   return $blocks;
@@ -42,33 +43,112 @@ function primo_search_block_block_view($delta = '') {
     case 'primo_search_block':
 
       $searchScopes = (array) variable_get('primo_search_search_scope', array(
-
-        ));
+        'Library Catalogs + Articles' => 'everything_scope',
+        'Library Catalogs' => 'nu_scope',
+        'Law Library Catalog' => 'nu_law',
+        'Course Reserves' => 'nu_cr',
+        )
+      );
+      $searchScopes = array_flip($searchScopes);
+      
+      foreach ($searchScopes as $key => $value) {
+        $searchScopes[$key] = t($value);
+      }
       $modulePath = drupal_get_path('module', 'primo_search_block');
+
+      $additionalMarkup = variable_get('primo_search_block_additional_markup', array(
+        'format' => null,
+        'value' => null,
+        )
+      );
+      dpm($additionalMarkup);
+
       $block['subject'] = t(variable_get('primo_search_block_title', 'Primo Search'));
       $block['content'] = array(
-        'form' => array(
-          '#type'=> 'markup',
-          '#markup'=>
-          '
-            <form name="searchForm" role="search" method="get" action="http://'. variable_get('primo_search_block_url', 'example.com:1701') .  /* <PRIMO_URL:PORT> */  '/primo_library/libweb/action/dlSearch.do" enctype="application/x-www-form-urlencoded; charset=utf-8" id="simple" class="primo-search" target="_self"  onsubmit="searchPrimo()">
-            <input name="institution" value="'.variable_get('primo_search_block_institution_code', 'EXL') . /*<INSTITUTION_CODE>*/ '" type="hidden">
-            <input name="vid" value="'. variable_get('primo_search_block_view_code', 'EXL'). /*<VIEW_CODE>*/'" type="hidden">
-            <input name="group" value="GUEST" type="hidden">
-            <input name="onCampus" value="true" type="hidden">
-            <input name="displayMode" value="full" type="hidden">
-            <input type="hidden" id="primoQuery" name="query" />
-            <input type="text" size="25" id="primoQueryTemp" value="" placeholder="Search..." name="queryTemp" onkeypress="return searchPrimoEvent(event)" />
-            '. 
-              primo_search_block_scopes_select($searchScopes)
-            .'
-            <input id="go" type="button" value="Search" title="Search"  onclick="searchPrimo()" alt="Search">
-            </form>
-          ',
+          'searchForm'=> array(
+            '#type'=> 'form',
+            '#method' => 'get',
+            '#action' => url('http://'. variable_get('primo_search_block_url','onesearch.northeastern.edu:1701'). '/primo_library/libweb/action/dlSearch.do'),
+            '#attributes'=> array(
+              'onsubmit' => 'searchPrimo()',
+              'name' => 'searchForm',
+              'role'=>'search',
+              ),
+            'institution' => array(
+              '#type'=> 'hidden',
+              '#value'=> variable_get('primo_search_block_institution_code','NEU'),
+              '#attributes'=> array(
+                'name'=> 'institution',
+                ),
+              ),
+            'vid' => array(
+              '#type'=> 'hidden',
+              '#value'=> variable_get('primo_search_block_view_code', 'NU'),
+              '#attributes'=> array(
+                'name'=> 'vid',
+                ),
+              ),
+            'group' => array(
+              '#type'=> 'hidden',
+              '#value'=> 'GUEST',
+              '#attributes'=> array(
+                'name'=> 'group',
+                ),
+              ),
+            'onCampus' => array(
+              '#type'=> 'hidden',
+              '#value'=> 'true',
+              '#attributes'=> array(
+                'name'=> 'onCampus',
+                ),
+              ),
+            'displayMode' => array(
+              '#type'=> 'hidden',
+              '#value'=> 'full',
+              '#attributes'=> array(
+                'name'=> 'displayMode',
+                ),
+              ),
+            'query' => array(
+              '#type'=> 'hidden',
+              '#attributes'=> array(
+                'name'=> 'query',
+                'id'=> 'primoQuery',
+                ),
+              ),
+            'queryTemp' => array(
+              '#type'=> 'textfield',
+              '#required' => TRUE,
+              '#attributes'=> array(
+                'onkeypress' =>'return searchPrimoEvent(event)',
+                'name'=> 'primoQueryTemp',
+                'id'=> 'primoQueryTemp',
+                'placeholder'=> variable_get('primo_search_block_placeholder', 'Search NU Libraries & More'),
+                )
+              ),
+            'searchScopes' => array(
+              '#type' => 'select',
+              '#options' => $searchScopes,
+              '#attributes'=> array(
+                'name'=>'search_scope'
+                )
+              ),
+            'searchSubmit'=> array(
+              '#type'=> 'submit',
+              '#value'=> 'Search',
+              '#attributes' => array(
+                'id'=> 'go',
+                'onclick'=> 'searchPrimo()',
+                'alt'=>'search',
+                ),
+              ),
+            'additionalMarkup' => array(
+              '#type'=> 'markup',
+              '#markup'=> check_markup($additionalMarkup['value'], $additionalMarkup['format']),
+              ),
+            ),
           '#attached' => array(
             'js' => array( $modulePath . '/js/primo_search_block.min.js'),
-            'css' => array($modulePath . '/css/primo_search_block.css'),
-            ),
           ),
 
         );
@@ -83,6 +163,12 @@ function primo_search_block_block_view($delta = '') {
 function primo_search_block_block_configure($delta = '') {
   $form = array();
    if ($delta == 'primo_search_block') {
+
+    $additionalMarkup = variable_get('primo_search_block_additional_markup', array(
+        'format' => null,
+        'value' => null,
+        )
+    );
     $form['primo_search_block_scope_json'] = array(
       '#type' => 'textfield',
       '#title' => t('Search scopes'),
@@ -114,6 +200,18 @@ function primo_search_block_block_configure($delta = '') {
       '#default_value'=> variable_get('primo_search_block_view_code', 'NU'),
       '#required' => True,
       );
+    $form['primo_search_block_additional_markup'] = array(
+      '#type'=>'text_format',
+      '#title' => t('Additional markup to add to the block'),
+      '#default_value' => $additionalMarkup['value'],
+      '#format' => $additionalMarkup['format'],
+      );
+    $form['primo_search_block_placeholder'] = array(
+      '#type'=>'textfield',
+      '#title'=> t('Search placeholder for the search field'),
+      '#default_value' => variable_get('primo_search_block_placeholder', 'Search NU Libraries & More'),
+
+      );
    }
   return $form;
 }
@@ -121,8 +219,6 @@ function primo_search_block_block_configure($delta = '') {
 /**
  * Form search scope validation funtion.
  * @param  array $element the returne form element.
- *
- * @todo Fix this!
  */
 function primo_search_block_scope_json_validate($element, &$form_state, $form){
   $test = @json_decode($element['#value']);
@@ -143,6 +239,8 @@ function primo_search_block_block_save($delta = '', $edit = array()) {
     variable_set('primo_search_block_view_code', $edit['primo_search_block_view_code']);
     variable_set('primo_search_block_institution_code', $edit['primo_search_block_institution_code']);
     variable_set('primo_search_block_url', $edit['primo_search_block_url']);
+    variable_set('primo_search_block_additional_markup', $edit['primo_search_block_additional_markup']);
+    variable_set('primo_search_block_placeholder', $edit['primo_search_block_placeholder']);
   }
 
 }
