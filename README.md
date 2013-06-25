@@ -62,5 +62,4 @@ The following attributes should be modified to fit your Primo configuration:
 
 
 ### Customizing your added search box
-
-You may add CSS attributes to your search box to match your website’s design. In addition, you may wrap this search box form in an iFrame add the iFrame to your website.
+\
