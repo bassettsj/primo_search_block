@@ -178,7 +178,7 @@ function primo_search_block_block_configure($delta = '') {
       '#required' => True,
       '#size'=> 200,
       '#maxlength'=> 999,
-      '#element_validate' => array('primo_search_block_scope_json_validate'),
+      '#element_validate' => array('primo_search_block_json_validate'),
       );
 
     $form['primo_search_block_institution_code']= array(
@@ -212,6 +212,31 @@ function primo_search_block_block_configure($delta = '') {
       '#default_value' => variable_get('primo_search_block_placeholder', 'Search NU Libraries & More'),
 
       );
+    $form['primo_search_block_advanced_search'] = array(
+      '#type'=>'textfield',
+      '#title'=> t('Advanced Search Link'),
+      '#default_value' => variable_get('primo_search_block_advanced_search', null),
+      );
+    $form['primo_search_block_browse_search'] = array(
+      '#type'=>'textfield',
+      '#title'=> t('Browse Search Link'),
+      '#default_value' => variable_get('primo_search_block_browse_search', null),
+      );
+    $form['primo_search_block_help'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Search help link'),
+      '#defualt_value' =>  variable_get('primo_search_block_help', null),
+      );
+    $form['primo_search_block_ext_link_json'] = array(
+      '#type' => 'textfield',
+      '#title' => t('External links'),
+      '#default_value' => variable_get('primo_search_block_ext_link_json',
+        '{"Google Scholar":"http://scholar.google.com/schhp?hl=en&inst=12820075384204861865","WorldCat":"http://northeastern.worldcat.org"}'),
+      '#size'=> 200,
+      '#maxlength'=> 999,
+      '#element_validate' => array('primo_search_block_json_validate'),
+      '#description' => t('To add additional links to the to the Primo Search block, please enter JSON formated data. For example <code>{"Title":"URL","Title 2":"URL 2"}</code>. All links will be formated as external links.'),
+      );
    }
   return $form;
 }
@@ -220,10 +245,10 @@ function primo_search_block_block_configure($delta = '') {
  * Form search scope validation funtion.
  * @param  array $element the returne form element.
  */
-function primo_search_block_scope_json_validate($element, &$form_state, $form){
+function primo_search_block_json_validate($element, &$form_state, $form){
   $test = @json_decode($element['#value']);
   if ($test === null && json_last_error() !== JSON_ERROR_NONE) {
-    form_set_error('primo_search_search_scope_json', t('Primo search scopes must be vaild JSON.'));
+    form_set_error('primo_search_search_scope_json', t('Please enter valid JSON.'));
   }
 }
 
@@ -241,6 +266,10 @@ function primo_search_block_block_save($delta = '', $edit = array()) {
     variable_set('primo_search_block_url', $edit['primo_search_block_url']);
     variable_set('primo_search_block_additional_markup', $edit['primo_search_block_additional_markup']);
     variable_set('primo_search_block_placeholder', $edit['primo_search_block_placeholder']);
+    variable_set('primo_search_block_advanced_search', $edit['primo_search_block_advanced_search']);
+    variable_set('primo_search_block_browse_search', $edit['primo_search_block_browse_search']);
+    variable_set('primo_search_block_ext_link_json', $edit['primo_search_block_ext_link_json']);
+    variable_set('primo_search_block_ext_link_array', json_decode($edit['primo_search_block_ext_link_json'],True));
   }
 
 }
