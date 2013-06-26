@@ -206,10 +206,22 @@ function primo_search_block_block_view($delta = '') {
       $block['content']['link_list'] = array(
         '#theme' => 'links',
         '#links' => $searchLinks,
+        '#attributes'=>array(
+          'class' => array(
+            'search-links',
+            'nav',
+            )
+          ),
       );
       $block['content']['ext_link_list'] = array(
         '#theme' => 'links',
         '#links' => $extLinksArray,
+        '#attributes' => array(
+          'class' => array(
+            'ext-links',
+            'nav',
+            ),
+          ),
         );
       if($additionalMarkup != null){
         $block['content']['additional_markup'] = array(
