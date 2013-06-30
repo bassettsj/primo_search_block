@@ -171,6 +171,8 @@ function primo_search_block_block_view($delta = '') {
             'queryTemp' => array(
               '#type'=> 'textfield',
               '#required' => TRUE,
+              '#title' => t('Keywords'),
+              '#title_display'=>'invisible',
               '#attributes'=> array(
                 'name'=> 'primoQueryTemp',
                 'id'=> 'primoQueryTemp',
@@ -180,6 +182,8 @@ function primo_search_block_block_view($delta = '') {
               ),
             'searchScopes' => array(
               '#type' => 'select',
+              '#title'=> t('Search scope'),
+              '#title_display'=>'invisible',
               '#options' => $searchScopes,
               '#attributes'=> array(
                 'name'=>'search_scope',
@@ -223,7 +227,7 @@ function primo_search_block_block_view($delta = '') {
             ),
           ),
         );
-      if($additionalMarkup != null){
+      if($additionalMarkup != null && strlen($additionalMarkup['value']) > 0){
         $block['content']['additional_markup'] = array(
         '#type'=> 'markup',
         '#markup'=> '<div class="container">'. check_markup($additionalMarkup['value'], $additionalMarkup['format']) . '</div>',
