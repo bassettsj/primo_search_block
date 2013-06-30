@@ -1,42 +1,367 @@
 <?php
 /**
  * @file primo_search_block.module
- * TODO: Enter file description here.
+ * Module to create a form and block rendered by drupal, configruable under the block menu.
  */
+
+
 
 /**
- * Implements hook_menu().
+ * Implements hook_block_info().
  */
-function primo_search_block_menu() { 
-  // This is the minimum information you can provide for a menu item.
-  $items['primo_search_block'] = array(
-    'title' => 'TODO: Enter menu item title',
-    'page callback' => 'TODO: Enter callback function',
-    'access arguments' => array('TODO: Enter user permissions'),
-  );
-  // This is a menu item for a form.
-  $items['primo_search_block/admin'] = array(
-    'title' => 'TODO: Enter menu item title',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('primo_search_block_form'),
-    'access arguments' => array('TODO: Enter user permissions'),
-  );
-  // More complex menu item.
-  $items['primo_search_block/foo'] = array(
-    'title' => 'TODO: Enter menu item title',
-    'description' => 'TODO: Enter description',
-    'page callback' => 'TODO: Enter callback function',
-    'page arguments' => array(), // An array of arguments to pass to the page callback function. Integer values pass the corresponding URL component.
-    'access callback' => '', // defaults to user_access()
-    'access arguments' => array('TODO: Enter user permissions'),
-    'weight' => 0,
-    'type' => MENU_NORMAL_ITEM, // One of MENU_NORMAL_ITEM / MENU_CALLBACK / MENU_SUGGESTED_ITEM / MENU_LOCAL_TASK / MENU_DEFAULT_LOCAL_TASK
-    'file' => 'primo_search_block.admin.inc',
-    'menu_name' => '', // Menu to place this item in.
-    'title callback' => '', // Function to generate the title, defaults to t(). 
-    'title arguments' => array(), // Arguments to send to t() or your custom callback. 
-  );
-  // OPTIONAL: Fill in additional menu items
+function primo_search_block_block_info() {
+  $blocks = array(
+    'primo_search_block' => array(
+        'info' => t('Primo Search Block'),
+        'cache' => DRUPAL_CACHE_GLOBAL,
+      ),
+    );
+  return $blocks;
+}
 
-  return $items;
+/**
+ * Builds the select element for the scopes list.
+ * @param  array  $scopes Associative array of label to value
+ * @return string         Markup to be added to the form.
+ */
+function primo_search_block_scopes_select(array $scopes){
+  $markup = '';
+  foreach ($scopes as $label => $value) {
+    $markup .= '<option value="'. $value.'">'.$label.'</option>';
+  }
+
+  $markup = '<select name="search_scope">'.$markup.'</select>';
+  return $markup;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function primo_search_block_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'primo_search_block':
+
+      $searchScopes = (array) variable_get('primo_search_search_scope', array(
+        'Library Catalogs + Articles' => 'everything_scope',
+        'Library Catalogs' => 'nu_scope',
+        'Law Library Catalog' => 'nu_law',
+        'Course Reserves' => 'nu_cr',
+        )
+      );
+      $searchScopes = array_flip($searchScopes);
+      
+      $searchLinks=array();
+      //Getting the advanced and browse search links.
+      $advancedSearch = variable_get('primo_search_block_advanced_search', null); 
+      if(strlen($advancedSearch)>0){
+        $searchLinks[] = array(
+          'title' => t('Advanced Search'),
+          'href' => $advancedSearch,
+          'attributes' => array(
+            'class'=>'advsearch',
+          ),
+        );
+      }
+
+      $browseSearch = variable_get('primo_search_block_browse_search', null);
+      if(strlen($browseSearch)>0){
+        $searchLinks[] = array(
+          'title' => t('Browse Search'),
+          'href' => $browseSearch,
+          'attributes' => array(
+            'class'=>'browse-search',
+          ),
+        );
+      }
+
+
+      $helpLink = variable_get('primo_search_block_help', null);
+
+      if(strlen($helpLink)>0){
+        $searchLinks[] = array(
+          'title' => t('Search Help'),
+          'href' => $helpLink,
+          'attributes' => array(
+            'class'=>'help',
+          ),
+        );
+      }
+
+
+      $extLinks = variable_get('primo_search_block_ext_link_array', null);
+      $extLinksArray = array();
+      if (count($extLinks)>0){
+        foreach($extLinks as $title => $url){
+          array_push($extLinksArray, array(
+            'title' => t($title),
+            'href' => $url,
+            'attributes' => array(
+              'target'=>'_blank',
+              'class' =>'ext-link'
+              ),
+            )
+          );
+        }
+      }
+      foreach ($searchScopes as $key => $value) {
+        $searchScopes[$key] = t($value);
+      }
+      $modulePath = drupal_get_path('module', 'primo_search_block');
+
+      $additionalMarkup = variable_get('primo_search_block_additional_markup', array(
+        'format' => null,
+        'value' => null,
+        )
+      );
+
+      $block['subject'] = t(variable_get('primo_search_block_title', 'Primo Search'));
+      $block['content'] = array(
+          'searchForm'=> array(
+            '#type'=> 'form',
+            '#method' => 'get',
+            '#action' => url('http://'. variable_get('primo_search_block_url','onesearch.northeastern.edu'). '/primo_library/libweb/action/dlSearch.do'),
+            '#attributes'=> array(
+              'onsubmit' => 'searchPrimo()',
+              'name' => 'searchForm',
+              'role'=>'search',
+              ),
+            'institution' => array(
+              '#type'=> 'hidden',
+              '#value'=> variable_get('primo_search_block_institution_code','NEU'),
+              '#attributes'=> array(
+                'name'=> 'institution',
+                ),
+              ),
+            'vid' => array(
+              '#type'=> 'hidden',
+              '#value'=> variable_get('primo_search_block_view_code', 'NU'),
+              '#attributes'=> array(
+                'name'=> 'vid',
+                ),
+              ),
+            'group' => array(
+              '#type'=> 'hidden',
+              '#value'=> 'GUEST',
+              '#attributes'=> array(
+                'name'=> 'group',
+                ),
+              ),
+            'onCampus' => array(
+              '#type'=> 'hidden',
+              '#value'=> 'true',
+              '#attributes'=> array(
+                'name'=> 'onCampus',
+                ),
+              ),
+            'displayMode' => array(
+              '#type'=> 'hidden',
+              '#value'=> 'full',
+              '#attributes'=> array(
+                'name'=> 'displayMode',
+                ),
+              ),
+            'query' => array(
+              '#type'=> 'hidden',
+              '#attributes'=> array(
+                'name'=> 'query',
+                'id'=> 'primoQuery',
+                ),
+              ),
+            'queryTemp' => array(
+              '#type'=> 'textfield',
+              '#required' => TRUE,
+              '#title' => t('Keywords'),
+              '#title_display'=>'invisible',
+              '#attributes'=> array(
+                'name'=> 'primoQueryTemp',
+                'id'=> 'primoQueryTemp',
+                'placeholder'=> variable_get('primo_search_block_placeholder', 'Search NU Libraries & More'),
+                'class' => array('search'),
+                )
+              ),
+            'searchScopes' => array(
+              '#type' => 'select',
+              '#title'=> t('Search scope'),
+              '#title_display'=>'invisible',
+              '#options' => $searchScopes,
+              '#attributes'=> array(
+                'name'=>'search_scope',
+                'title'=>'see more options'
+                )
+              ),
+            'searchSubmit'=> array(
+              '#type'=> 'submit',
+              '#value'=> 'Search',
+              '#attributes' => array(
+                'id'=> 'go',
+                'onclick'=> 'searchPrimo()',
+                'alt'=>'search',
+                ),
+              ),
+
+            ),
+          '#attached' => array(
+            'js' => array( $modulePath . '/js/primo_search_block.min.js'),
+          ),
+
+        );
+      
+      $block['content']['link_list'] = array(
+        '#theme' => 'links',
+        '#links' => $searchLinks,
+        '#attributes'=>array(
+          'class' => array(
+            'search-links',
+            'nav',
+            )
+          ),
+      );
+      $block['content']['ext_link_list'] = array(
+        '#theme' => 'links',
+        '#links' => $extLinksArray,
+        '#attributes' => array(
+          'class' => array(
+            'ext-links',
+            'nav',
+            ),
+          ),
+        );
+      if($additionalMarkup != null && strlen($additionalMarkup['value']) > 0){
+        $block['content']['additional_markup'] = array(
+        '#type'=> 'markup',
+        '#markup'=> '<div class="container">'. check_markup($additionalMarkup['value'], $additionalMarkup['format']) . '</div>',
+        );
+      }
+      
+    break;
+  }
+  return $block;
+}
+
+/**
+ * Implements hook_block_configure().
+ */
+function primo_search_block_block_configure($delta = '') {
+  $form = array();
+   if ($delta == 'primo_search_block') {
+
+    $additionalMarkup = variable_get('primo_search_block_additional_markup', array(
+        'format' => null,
+        'value' => null,
+        )
+    );
+    $form['primo_search_block_scope_json'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Search scopes'),
+      '#default_value' => variable_get('primo_search_block_scope_json'
+        ,'{"Library Catalogs + Articles":"everything_scope","Library Catalogs":"nu_scope","Law Library Catalog":"nu_law","Course Reserves":"nu_cr"}'
+        ),
+      '#required' => True,
+      '#size'=> 200,
+      '#maxlength'=> 999,
+      '#element_validate' => array('primo_search_block_json_validate'),
+      '#description' => t('Add the available search scopes, please enter JSON formated data. For example <code>{"Library Catalogs + Articles":"everything_scope","Library Catalogs":"nu_scope","Law Library Catalog":"nu_law","Course Reserves":"nu_cr"}</code>.'),
+      );
+
+    $form['primo_search_block_institution_code']= array(
+      '#type' => 'textfield',
+      '#title' => t('Institution Code'),
+      '#default_value'=> variable_get('primo_search_block_institution_code', 'NEU'),
+      '#required' => True,
+      '#description' => t('This needs to be your Primo Institution Code. Example: NORTH'), 
+      );
+    
+    $form['primo_search_block_url']= array(
+      '#type' => 'textfield',
+      '#title' => t('Primo\'s Url and Port'),
+      '#default_value' => variable_get('primo_search_block_url', 'onesearch.northeastern.edu'),
+      '#required' => True,
+      '#description' => t('This needs to be your Primo Front End, or Load Balancer address if you have an MFE environment. Example: primo-demo.exlibrisgroup.com:1701'),
+      );
+    $form['primo_search_block_view_code'] = array(
+      '#type' => 'textfield',
+      '#title' => t('View code.'),
+      '#default_value'=> variable_get('primo_search_block_view_code', 'NU'),
+      '#required' => True,
+      '#description' => t('This field specifies the View Code which the dlSearch will search at. Example: NORTH_VU01'),
+      );
+    $form['primo_search_block_additional_markup'] = array(
+      '#type'=>'text_format',
+      '#title' => t('Additional markup to add to the block'),
+      '#default_value' => $additionalMarkup['value'],
+      '#format' => $additionalMarkup['format'],
+      '#weight' => 100,
+      '#description'=> t('Any addtional rich text you would like to add to the block.'),
+      );
+    $form['primo_search_block_placeholder'] = array(
+      '#type'=>'textfield',
+      '#title'=> t('Search placeholder for the search field'),
+      '#default_value' => variable_get('primo_search_block_placeholder', 'Search NU Libraries & More'),
+      '#description'=>t('The words that will be added to the when the field is blank.'),
+      );
+    $form['primo_search_block_advanced_search'] = array(
+      '#type'=>'textfield',
+      '#title'=> t('Advanced Search Link'),
+      '#default_value' => variable_get('primo_search_block_advanced_search', null),
+      '#description' => t('The url for the advanced search, if blank it will not be rendered.'),
+      );
+    $form['primo_search_block_browse_search'] = array(
+      '#type'=>'textfield',
+      '#title'=> t('Browse Search Link'),
+      '#default_value' => variable_get('primo_search_block_browse_search', null),
+      '#description' => t('The url for the browse search, if blank it will not be rendered.'),
+      );
+    $form['primo_search_block_help'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Search help link'),
+      '#default_value' =>  variable_get('primo_search_block_help', null),
+      '#description' => t('The url for the help page, if blank it will not be rendered.'),
+      );
+    $form['primo_search_block_ext_link_json'] = array(
+      '#type' => 'textfield',
+      '#title' => t('External links'),
+      '#default_value' => variable_get('primo_search_block_ext_link_json',
+        '{"Google Scholar":"http://scholar.google.com/schhp?hl=en&inst=12820075384204861865","WorldCat":"http://northeastern.worldcat.org"}'),
+      '#size'=> 200,
+      '#maxlength'=> 999,
+      '#element_validate' => array('primo_search_block_json_validate'),
+      '#description' => t('To add additional links to the to the Primo Search block, please enter JSON formated data. For example <code>{"Title":"URL","Title 2":"URL 2"}</code>. All links will be formated as external links.'),
+      );
+   }
+  return $form;
+}
+
+/**
+ * Form search scope validation funtion.
+ * @param  array $element the returne form element.
+ */
+function primo_search_block_json_validate($element, &$form_state, $form){
+  $test = @json_decode($element['#value']);
+  if ($test === null && json_last_error() !== JSON_ERROR_NONE) {
+    form_set_error('primo_search_search_scope_json', t('Please enter valid JSON.'));
+  }
+}
+
+
+
+/**
+ * Implements hook_block_save().
+ */
+function primo_search_block_block_save($delta = '', $edit = array()) {
+  if ($delta == 'primo_search_block'){
+    variable_set('primo_search_block_scope_json', $edit['primo_search_block_scope_json']);
+    variable_set('primo_search_block_scope_array', json_decode($edit['primo_search_block_scope_json'],True));
+    variable_set('primo_search_block_view_code', $edit['primo_search_block_view_code']);
+    variable_set('primo_search_block_institution_code', $edit['primo_search_block_institution_code']);
+    variable_set('primo_search_block_url', $edit['primo_search_block_url']);
+    variable_set('primo_search_block_additional_markup', $edit['primo_search_block_additional_markup']);
+    variable_set('primo_search_block_placeholder', $edit['primo_search_block_placeholder']);
+    variable_set('primo_search_block_advanced_search', $edit['primo_search_block_advanced_search']);
+    variable_set('primo_search_block_browse_search', $edit['primo_search_block_browse_search']);
+    variable_set('primo_search_block_help', $edit['primo_search_block_help']);
+    variable_set('primo_search_block_ext_link_json', $edit['primo_search_block_ext_link_json']);
+    variable_set('primo_search_block_ext_link_array', json_decode($edit['primo_search_block_ext_link_json'],True));
+  }
+
 }
